@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="">
+	<meta name="author" content="">
+
+	<title>Shopper</title>
+
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+	<link rel="stylesheet" href="{{ static_url("cart.css") }}">
+
+</head>
+<body>
+
+<div class="collapse" id="navbar-header">
+  <div class="container-fluid bg-inverse p-a-1">
+	<h3>Collapsed content</h3>
+	<p>Toggleable via the navbar brand.</p>
+  </div>
+</div>
+
+<nav class="navbar navbar-default navbar-static-top">
+	<div class="container-fluid">
+		<div class="navbar-header">
+			<span class="navbar-brand glyphicon glyphicon-shopping-cart"></span>
+			<button class="btn navbar-btn navbar-toggler" data-toggle="collapse" data-target="#navbar-header">
+			&#9776;
+			</button>
+		</div>
+	</div>
+</nav>
+
+<div class="cart">
+	<h2 class="text-center">Shopping List</h2>
+	<ul id="cart" class="list-group list-group-flush center-block">
+		{% for item in items %}
+		<li class="list-group-item">
+			<span class="checked glyphicon glyphicon-ok-sign"></span>
+			{{ escape(item['name']) }}
+			<span class="badge">{{ item['count'] }}</span>
+		</li>
+		{% end %}
+	</ul>
+	<button class="btn btn-danger center-block">
+		Delete List
+	</button>
+</div>
+
+<nav class="navbar navbar-default navbar-fixed-bottom">
+  <div class="container-fluid">
+    <div class="navbar-header">
+		<span class="navbar-brand glyphicon glyphicon-wrench"></span>
+		<button class="btn  navbar-btn">
+			<span class="glyphicon glyphicon-plus"></span>
+		</button>
+		<button class="btn  navbar-btn">
+			<span class="glyphicon glyphicon-minus"></span>
+		</button>
+		<button class="btn  navbar-btn">
+			<span class="glyphicon glyphicon-barcode"></span>
+		</button>
+		<button class="btn  navbar-btn">
+			<span class="glyphicon glyphicon-qrcode"></span>
+		</button>
+		<button class="btn  navbar-btn">
+			<span class="glyphicon glyphicon-trash"></span>
+		</button>
+		<button class="btn  navbar-btn">
+			<span class="glyphicon glyphicon-refresh"></span>
+		</button>
+    </div>
+  </div>
+</nav>
+
+<script>
+function checkbox(evt){
+   // Get the image that was clicked.
+   var target = evt.target || evt.srcElement;
+
+   // Then get the src or get the class
+   var targetSrc = target.src;
+   var targetClass = target.getAttribute("class");
+
+   // Do more processing here...
+   // Then you can change the src of the image if need be.
+
+	console.log(evt);
+	console.log(target);
+	console.log(target.parentElement);
+}
+
+var months = document.getElementById("cart");
+months.addEventListener("click", checkbox, true);
+</script>
+
+	<!-- Placed at the end of the document so the pages load faster -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+</body>
+</html>
+
+

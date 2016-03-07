@@ -1,0 +1,16 @@
+.cart>.list-group {
+    max-width: 400px;
+}
+
+/* Show it's not fixed to the top */
+body {
+	min-height: 75rem;
+	padding-bottom: 70px;
+}
+
+span.glyphicon-ok-sign {
+    font-size: 1.5em;
+	top: 5px;
+	line-height: 0;
+	padding-right: 10px;
+}
