@@ -5,4 +5,5 @@ pip install tornado
 
 ufw status
 ufw allow 8888/tcp
+ufw allow ssh
 ufw enable
