@@ -49,7 +49,6 @@ class Application(tornado.web.Application):
 
 		schema = open('schema.sql', 'r').read()
 		c.executescript(schema)
-		schema.close()
 
 		# For testing purposes only.
 		self.generateTestData(db, c)

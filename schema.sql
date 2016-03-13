@@ -8,8 +8,9 @@ CREATE TABLE IF NOT EXISTS barcode (
 );
 
 CREATE TABLE IF NOT EXISTS item (
-	fk_list INTEGER, FOREIGN KEY(fk_list) REFERENCES list(ROWID)
-	fk_barcode INTEGER, FOREIGN KEY(fk_barcode) REFERENCES barcode(ROWID))
+	fk_list INTEGER,
+	fk_barcode INTEGER,
 	count INTEGER,
-	UNIQUE(fk_list, fk_barcode)
+	FOREIGN KEY(fk_list) REFERENCES list(ROWID),
+	FOREIGN KEY(fk_barcode) REFERENCES barcode(ROWID)
 );
