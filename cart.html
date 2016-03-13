@@ -34,12 +34,12 @@
 	</div>
 </nav>
 
-<div class="cart">
+<div>
 	<h2 class="text-center">Shopping List</h2>
 	<ul id="cart" class="list-group list-group-flush center-block">
 		{% for item in items %}
-		<li class="list-group-item">
-			<span class="checked glyphicon glyphicon-ok-sign"></span>
+		<li class="cart-item list-group-item" id="{{ item['id'] }}">
+			<span class="cart-item-tick glyphicon glyphicon-ok-sign"></span>
 			{{ escape(item['name']) }}
 			<span class="badge">{{ item['count'] }}</span>
 		</li>
@@ -54,54 +54,104 @@
   <div class="container-fluid">
     <div class="navbar-header">
 		<span class="navbar-brand glyphicon glyphicon-wrench"></span>
-		<button class="btn  navbar-btn">
+		<button id="do-plus" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-plus"></span>
 		</button>
-		<button class="btn  navbar-btn">
+		<button id="do-minus" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-minus"></span>
 		</button>
-		<button class="btn  navbar-btn">
+		<button id="do-scan-barcode" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-barcode"></span>
 		</button>
-		<button class="btn  navbar-btn">
+		<button id="do-scan-qrcode" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-qrcode"></span>
 		</button>
-		<button class="btn  navbar-btn">
+		<button id="do-delete" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-trash"></span>
 		</button>
-		<button class="btn  navbar-btn">
+		<button id="do-refresh" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-refresh"></span>
 		</button>
     </div>
   </div>
 </nav>
 
-<script>
-function checkbox(evt){
-   // Get the image that was clicked.
-   var target = evt.target || evt.srcElement;
-
-   // Then get the src or get the class
-   var targetSrc = target.src;
-   var targetClass = target.getAttribute("class");
-
-   // Do more processing here...
-   // Then you can change the src of the image if need be.
-
-	console.log(evt);
-	console.log(target);
-	console.log(target.parentElement);
-}
-
-var months = document.getElementById("cart");
-months.addEventListener("click", checkbox, true);
-</script>
-
 	<!-- Placed at the end of the document so the pages load faster -->
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
 	<!-- Latest compiled and minified JavaScript -->
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+<script>
+function checkForUpdates() {
+	
+}
+
+$(document).ready(function(){
+    $(".cart-item").click(function() {
+		$(this).siblings().removeClass("list-group-item-info");
+		$(this).toggleClass("list-group-item-info");
+    });
+	$(".cart-item-tick").click(function(event) {
+		$(this).toggleClass("cart-item-have");
+		$(this).parent().toggleClass("greyout");
+		event.stopPropagation();
+	});
+
+	function updateItem(item, amount) {
+		var badge = item.children('.badge')
+		var itemID = item.attr('id')
+		var itemCount = parseInt(badge.text()) + amount
+		var request = {
+			item: {
+				count: itemCount
+			}
+		};
+
+		$.ajax({
+			url: '/list/1/item/' + itemID,
+			type: 'PUT',
+			data: JSON.stringify(request),
+			success: function(data, status) {
+				console.log(badge)
+				console.log("Data: " + data + "\nStatus: " + status);
+				badge.text(itemCount)
+			}
+		});
+	}
+
+	$("#do-plus").click(function() {
+		var item = $('.list-group-item-info')
+		updateItem(item, 1)
+	});
+
+	$("#do-minus").click(function() {
+		var item = $('.list-group-item-info')
+		updateItem(item, -1)
+	});
+
+	$("#do-delete").click(function() {
+		var item = $('.list-group-item-info')
+		var itemID = item.attr('id')
+		$.ajax({
+			url: '/list/1/item/' + itemID,
+			type: 'DELETE',
+			success: function(data, status) {
+				item.remove();
+			}
+		});
+	});
+
+		/*
+		$.put("/list/1/item/" + itemID , function(data, status) {
+			alert("Data: " + data + "\nStatus: " + status);
+		});
+		*/
+
+	setInterval(checkForUpdates, 5000);
+});
+</script>
+
 </body>
 </html>
 
