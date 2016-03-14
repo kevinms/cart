@@ -34,19 +34,42 @@
 	</div>
 </nav>
 
+<!-- Modal -->
+<div class="modal fade" id="item-modal" tabindex="-1" role="dialog" aria-labelledby="item-modal-label">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="item-modal-label">New Item</h4>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="form-group">
+            <input type="text" class="form-control" id="item-input">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id='do-new-item'>Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div>
 	<h2 class="text-center">Shopping List</h2>
 	<ul id="cart" class="list-group list-group-flush center-block">
 		{% for item in items %}
-		<li class="cart-item list-group-item" id="{{ item['id'] }}">
-			<span class="cart-item-tick glyphicon glyphicon-ok-sign"></span>
-			{{ escape(item['name']) }}
+		<li class="cart-item list-group-item {% if item['done'] != 0 %}greyout{% end %}" id="{{ item['id'] }}">
+			<span class="cart-item-tick glyphicon glyphicon-ok-sign {% if item['done'] != 0 %}cart-item-have{% end %}"></span>
+			<span class="cart-item-name">{{ escape(item['name']) }}</span>
 			<span class="badge">{{ item['count'] }}</span>
 		</li>
 		{% end %}
 	</ul>
-	<button class="btn btn-danger center-block">
-		Delete List
+	<button id='do-remove-checked' class="btn btn-danger center-block">
+		Remove Checked Items
 	</button>
 </div>
 
@@ -63,11 +86,11 @@
 		<button id="do-scan-barcode" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-barcode"></span>
 		</button>
-		<button id="do-scan-qrcode" class="btn navbar-btn">
-			<span class="glyphicon glyphicon-qrcode"></span>
-		</button>
 		<button id="do-delete" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-trash"></span>
+		</button>
+		<button class="btn navbar-btn" data-toggle="modal" data-target="#item-modal">
+			<span class="glyphicon glyphicon-tag"></span>
 		</button>
 		<button id="do-refresh" class="btn navbar-btn">
 			<span class="glyphicon glyphicon-refresh"></span>
@@ -88,17 +111,39 @@ function checkForUpdates() {
 }
 
 $(document).ready(function(){
-    $(".cart-item").click(function() {
+	$('#cart').on('click', '.cart-item', function() {
 		$(this).siblings().removeClass("list-group-item-info");
 		$(this).toggleClass("list-group-item-info");
     });
-	$(".cart-item-tick").click(function(event) {
-		$(this).toggleClass("cart-item-have");
-		$(this).parent().toggleClass("greyout");
+
+	$('#cart').on('click', '.cart-item-tick', function(event) {
 		event.stopPropagation();
+		var item = $(this).parent();
+		toggleItemDone(item);
 	});
 
-	function updateItem(item, amount) {
+	function toggleItemDone(item) {
+		var tick = item.children('.cart-item-tick');
+		var itemID = item.attr('id');
+		var itemDone = !tick.hasClass('cart-item-have');
+		var request = {
+			item: {
+				done: Number(itemDone)
+			}
+		};
+
+		$.ajax({
+			url: '/list/1/item/' + itemID,
+			type: 'PUT',
+			data: JSON.stringify(request),
+			success: function(data, status) {
+				tick.toggleClass("cart-item-have");
+				item.toggleClass("greyout");
+			}
+		});
+	}
+
+	function updateItemCount(item, amount) {
 		var badge = item.children('.badge')
 		var itemID = item.attr('id')
 		var itemCount = parseInt(badge.text()) + amount
@@ -113,8 +158,6 @@ $(document).ready(function(){
 			type: 'PUT',
 			data: JSON.stringify(request),
 			success: function(data, status) {
-				console.log(badge)
-				console.log("Data: " + data + "\nStatus: " + status);
 				badge.text(itemCount)
 			}
 		});
@@ -122,16 +165,82 @@ $(document).ready(function(){
 
 	$("#do-plus").click(function() {
 		var item = $('.list-group-item-info')
-		updateItem(item, 1)
+		updateItemCount(item, 1)
 	});
 
 	$("#do-minus").click(function() {
 		var item = $('.list-group-item-info')
-		updateItem(item, -1)
+		updateItemCount(item, -1)
 	});
 
-	$("#do-delete").click(function() {
-		var item = $('.list-group-item-info')
+	$('#item-modal').on('shown.bs.modal', function () {
+		$('#item-input').focus();
+	})
+
+	var html =
+	' \
+	<li class="cart-item list-group-item" id="temp-item"> \
+		<span class="cart-item-tick glyphicon glyphicon-ok-sign"></span> \
+		<span class="cart-item-name">Temporary Item</span> \
+		<span class="badge">1</span> \
+	</li> \
+	'
+
+	function addItem(item) {
+		var dom = $($.parseHTML(html));
+		console.log(dom);
+		console.log(html);
+		var tick = dom.children('.cart-item-tick');
+		var badge = dom.children('.badge')
+
+		dom.children('.cart-item-name').text(item.name)
+		dom.attr('id', item.id)
+		if (item.done != 0) {
+			tick.toggleClass("cart-item-have");
+			dom.toggleClass("greyout");
+		}
+		badge.text(item.count)
+
+		$('#cart').append(dom);
+	}
+
+	function getItem(url) {
+		$.get(url, function(data) {
+			var obj = jQuery.parseJSON(data);
+			console.log(obj);
+
+			$('#item-modal').modal('hide');
+
+			addItem(obj.item);
+		});
+	}
+
+	$("#do-new-item").click(function() {
+		var name = $('#item-input').val();
+
+		var request = {
+			item: {
+				name: name,
+				count: 1,
+				done: 0,
+				code: 'manual-' + name
+			}
+		};
+
+		$.ajax({
+			url: '/list/1/item',
+			type: 'POST',
+			data: JSON.stringify(request),
+			success: function(data, status, xhr) {
+				console.log(data)
+				console.log(status)
+				url = xhr.getResponseHeader('Location');
+				getItem(url);
+			}
+		});
+	});
+
+	function deleteItem(item) {
 		var itemID = item.attr('id')
 		$.ajax({
 			url: '/list/1/item/' + itemID,
@@ -140,13 +249,19 @@ $(document).ready(function(){
 				item.remove();
 			}
 		});
+	}
+
+	$("#do-delete").click(function() {
+		var item = $('.list-group-item-info')
+		deleteItem(item);
 	});
 
-		/*
-		$.put("/list/1/item/" + itemID , function(data, status) {
-			alert("Data: " + data + "\nStatus: " + status);
+	$("#do-remove-checked").click(function() {
+		$('.cart-item:has(> .cart-item-have)').each(function() {
+			console.log('bob')
+			deleteItem($(this));
 		});
-		*/
+	});
 
 	setInterval(checkForUpdates, 5000);
 });
@@ -154,5 +269,4 @@ $(document).ready(function(){
 
 </body>
 </html>
-
 

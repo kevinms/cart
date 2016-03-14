@@ -19,9 +19,11 @@ class Application(tornado.web.Application):
 			# DELETE - Delete list.
 			(r"/list/([0-9]+)", ListHandler),
 
+			# POST   - Create item.
+			(r"/list/([0-9]+)/item", ItemHandler),
+
 			# GET    - Get item.
 			# PUT    - Update item.
-			# POST   - Create item.
 			# DELETE - Delete item.
 			(r"/list/([0-9]+)/item/([0-9]+)", ItemHandler)
 		]
@@ -66,14 +68,14 @@ class Application(tornado.web.Application):
 
 		barcodes = [
 			('012800517725', 'AA Batteries'),
-			('902139032909', 'Nutty Bars'),
-			('792828338220', 'Toothpaste'),
-			('792828338220', 'Frozen Pizza'),
-			('792828338220', 'Milk'),
-			('792828338220', 'Kelloggs Fruit and Yogurt'),
-			('792828338220', 'Peanut Butter'),
-			('792828338220', 'Tomatoes'),
-			('792828338220', 'Onions'),
+			('792828338220', 'Nutty Bars'),
+			('792828338221', 'Toothpaste'),
+			('792828338222', 'Frozen Pizza'),
+			('792828338223', 'Milk'),
+			('792828338224', 'Kelloggs Fruit and Yogurt'),
+			('792828338225', 'Peanut Butter'),
+			('792828338226', 'Tomatoes'),
+			('792828338227', 'Onions'),
 		]
 
 		c.executemany("INSERT INTO barcode VALUES (?,?)", barcodes)
@@ -83,7 +85,7 @@ class Application(tornado.web.Application):
 			list_rowid = list_row["ROWID"]
 			for barcode_row in c2.execute("SELECT ROWID FROM barcode"):
 				barcode_rowid = barcode_row["ROWID"]
-				c3.execute("INSERT INTO item VALUES(?,?,?)", (list_rowid, barcode_rowid, randrange(1,10)))
+				c3.execute("INSERT INTO item VALUES(?,?,?,?)", (list_rowid, barcode_rowid, randrange(1,10), 0))
 
 
 class List():
@@ -115,17 +117,10 @@ class BaseHandler(tornado.web.RequestHandler):
 	def rawQuery(self, sql, args=(), one=False):
 		c = self.db.cursor()
 		c.execute(sql, args)
+		return c
 
 	def encode(self, arg):
 		return json.dumps(arg, sort_keys=True, indent=4)
-
-'''
-	def prepare(self):
-		if self.request.headers["Content-Type"].startswith("application/json"):
-			self.json_args = json.loads(self.request.body)
-		else:
-			self.json_args = None
-'''
 
 class MainHandler(BaseHandler):
 	def get(self):
@@ -135,7 +130,7 @@ class MainHandler(BaseHandler):
 class ItemHandler(BaseHandler):
 	def get(self, listID, itemID):
 		r = self.query('''
-			SELECT item.ROWID as id, count, code, name
+			SELECT item.ROWID as id, count, done, code, name
 			FROM item JOIN barcode ON (item.fk_barcode = barcode.ROWID)
 			WHERE fk_list = ? AND item.ROWID = ?
 		''', (listID, itemID,), True);
@@ -147,13 +142,22 @@ class ItemHandler(BaseHandler):
 		j = json.loads(self.request.body)
 		p = j['item']
 
-		if 'count' not in p:
+		setClause = ''
+		args = ()
+		if 'done' in p:
+			setClause += 'done = ?'
+			args += (p['done'],)
+		if 'count' in p:
+			setClause += 'count = ?'
+			args = args + (p['count'],)
+
+		if len(setClause) == 0:
 			self.send_error(500)
 			return
 
-		r = self.rawQuery('''
-			UPDATE item SET count = ? WHERE fk_list = ? AND ROWID = ?
-		''', (p['count'], listID, itemID,), True);
+		r = self.rawQuery(
+			'UPDATE item SET ' + setClause + ' WHERE fk_list = ? AND ROWID = ?'
+			, args + (listID, itemID,), True);
 		response = self.encode({'msg': 'Item updated.'})
 		self.write(response)
 
@@ -164,6 +168,21 @@ class ItemHandler(BaseHandler):
 		response = self.encode({'msg': 'Item deleted.'})
 		self.write(response)
 
+	def post(self, listID):
+		j = json.loads(self.request.body)['item']
+		print j
+		self.rawQuery("INSERT OR IGNORE INTO barcode VALUES (?,?)", (j['code'], j['name']))
+		r = self.query('SELECT ROWID as id FROM barcode WHERE code = ?', (j['code'],), True)
+
+		c = self.rawQuery('''
+			INSERT INTO item VALUES(?,?,?,?)
+		''', (listID, r['id'], j['count'], j['done']))
+		itemID = c.lastrowid
+
+		response = self.encode({'msg': 'Item created.'})
+		self.set_header("Location", '/list/' + str(listID) + '/item/' + str(itemID))
+		self.write(response)
+
 class ListHandler(BaseHandler):
 	def get(self, listID=0):
 		if listID == 0:
@@ -171,7 +190,7 @@ class ListHandler(BaseHandler):
 			response = self.encode({'lists': r})
 		else:
 			r = self.query('''
-				SELECT item.ROWID as id, count, code, name
+				SELECT item.ROWID as id, count, done, code, name
 				FROM item JOIN barcode ON (item.fk_barcode = barcode.ROWID)
 				WHERE fk_list = ?
 			''', (listID,))
