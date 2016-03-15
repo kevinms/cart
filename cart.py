@@ -25,7 +25,10 @@ class Application(tornado.web.Application):
 			# GET    - Get item.
 			# PUT    - Update item.
 			# DELETE - Delete item.
-			(r"/list/([0-9]+)/item/([0-9]+)", ItemHandler)
+			(r"/list/([0-9]+)/item/([0-9]+)", ItemHandler),
+
+			# GET    - Get barcode.
+			(r"/barcode/(.*)", BarcodeHandler)
 		]
 		settings = dict(
 			#template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -55,9 +58,39 @@ class Application(tornado.web.Application):
 		# For testing purposes only.
 		self.generateTestData(db, c)
 
+		self.importPOD_GTINdataset(db, c)
+
 		db.commit()
 
 		return db
+
+	def importPOD_GTINdataset(self, db, c):
+
+		pod = open('data/pod_gtin-pruned.csv', 'r')
+
+		line = pod.readline();
+		for line in pod:
+			line = unicode(line, "utf-8")
+
+			array = line.split(';')
+			if len(array) < 2:
+				print "Not enough values:",line
+				continue
+			gtin = array[0]
+			name = array[1]
+
+			if len(gtin) != 13:
+				print "GTIN length:",len(gtin),"Line:",line
+				continue
+			if gtin[0] == '0':
+				gtin = gtin[1:]
+
+			if len(name) <= 0:
+				print "Name is empty:",line
+				continue
+			c.execute("INSERT INTO barcode VALUES (?,?)", (gtin, name))
+
+		print "Finished import of POD GTIN dataset."
 
 	def generateTestData(self, db, c):
 
@@ -67,15 +100,15 @@ class Application(tornado.web.Application):
 		c.execute("INSERT INTO list VALUES ('Shopping List')")
 
 		barcodes = [
-			('012800517725', 'AA Batteries'),
-			('792828338220', 'Nutty Bars'),
-			('792828338221', 'Toothpaste'),
-			('792828338222', 'Frozen Pizza'),
-			('792828338223', 'Milk'),
-			('792828338224', 'Kelloggs Fruit and Yogurt'),
-			('792828338225', 'Peanut Butter'),
-			('792828338226', 'Tomatoes'),
-			('792828338227', 'Onions'),
+			('test-012800517725', 'AA Batteries'),
+			('test-792828338220', 'Nutty Bars'),
+			('test-792828338221', 'Toothpaste'),
+			('test-792828338222', 'Frozen Pizza'),
+			('test-792828338223', 'Milk'),
+			('test-792828338224', 'Kelloggs Fruit and Yogurt'),
+			('test-792828338225', 'Peanut Butter'),
+			('test-792828338226', 'Tomatoes'),
+			('test-792828338227', 'Onions'),
 		]
 
 		c.executemany("INSERT INTO barcode VALUES (?,?)", barcodes)
@@ -127,6 +160,22 @@ class MainHandler(BaseHandler):
 		l = List(self.db, 'Shopping List')
 		self.render("cart.html", items=l.items)
 
+class BarcodeHandler(BaseHandler):
+	def get(self, code):
+		#print code
+		r = self.query('''
+			SELECT ROWID as id, code, name
+			FROM barcode WHERE code = ?
+		''', (code,), True);
+
+		if r is None:
+			self.send_error(500)
+			return
+
+		response = self.encode({'barcode': r})
+		#print response
+		self.write(response)
+
 class ItemHandler(BaseHandler):
 	def get(self, listID, itemID):
 		r = self.query('''
@@ -138,18 +187,19 @@ class ItemHandler(BaseHandler):
 		self.write(response)
 
 	def put(self, listID, itemID):
-		print self.request.body
+		#print self.request.body
 		j = json.loads(self.request.body)
 		p = j['item']
 
 		setClause = ''
 		args = ()
 		if 'done' in p:
-			setClause += 'done = ?'
+			setClause += 'done = ? '
 			args += (p['done'],)
 		if 'count' in p:
-			setClause += 'count = ?'
-			args = args + (p['count'],)
+			setClause += ',' if len(setClause) > 0 else ''
+			setClause += 'count = ? '
+			args += (p['count'],)
 
 		if len(setClause) == 0:
 			self.send_error(500)
@@ -170,13 +220,24 @@ class ItemHandler(BaseHandler):
 
 	def post(self, listID):
 		j = json.loads(self.request.body)['item']
-		print j
+		#print j
 		self.rawQuery("INSERT OR IGNORE INTO barcode VALUES (?,?)", (j['code'], j['name']))
 		r = self.query('SELECT ROWID as id FROM barcode WHERE code = ?', (j['code'],), True)
+		barcodeID = r['id']
+
+		r2 = self.query('''
+			SELECT item.ROWID as id, count, done, code, name
+			FROM item JOIN barcode ON (item.fk_barcode = barcode.ROWID)
+			WHERE fk_list = ? AND fk_barcode = ?
+		''', (listID, barcodeID,), True);
+		if r2 is not None:
+			self.set_status(500)
+			response = self.encode({'error': 'Item already exists.', 'item': r2})
+			return self.finish(response)
 
 		c = self.rawQuery('''
 			INSERT INTO item VALUES(?,?,?,?)
-		''', (listID, r['id'], j['count'], j['done']))
+		''', (listID, barcodeID, j['count'], j['done']))
 		itemID = c.lastrowid
 
 		response = self.encode({'msg': 'Item created.'})
