@@ -91,6 +91,8 @@ class Application(tornado.web.Application):
 				continue
 			c.execute("INSERT INTO barcode VALUES (?,?)", (gtin, name))
 
+		db.commit()
+
 		print "Finished import of POD GTIN dataset."
 
 	def generateTestData(self, db, c):
@@ -120,6 +122,8 @@ class Application(tornado.web.Application):
 			for barcode_row in c2.execute("SELECT ROWID FROM barcode"):
 				barcode_rowid = barcode_row["ROWID"]
 				c3.execute("INSERT INTO item VALUES(?,?,?,?)", (list_rowid, barcode_rowid, randrange(1,10), 0))
+
+		db.commit()
 
 
 class List():
@@ -171,17 +175,19 @@ class BarcodeHandler(BaseHandler):
 
 	def get(self, code):
 		#print code
-		r = selectBarcode(code)
+		r = self.selectBarcode(code)
 
 		if r is None:
 			name = lookup.getBarcode(code)
 			if name is not None:
 				self.rawQuery("INSERT OR IGNORE INTO barcode VALUES (?,?)", (code, name))
-				r = selectBarcode(code)
+				r = self.selectBarcode(code)
 
 		if r is None:
 			self.send_error(500)
 			return
+
+		self.db.commit()
 
 		response = self.encode({'barcode': r})
 		#print response
@@ -219,6 +225,8 @@ class ItemHandler(BaseHandler):
 		r = self.rawQuery(
 			'UPDATE item SET ' + setClause + ' WHERE fk_list = ? AND ROWID = ?'
 			, args + (listID, itemID,), True);
+		self.db.commit()
+
 		response = self.encode({'msg': 'Item updated.'})
 		self.write(response)
 
@@ -226,6 +234,8 @@ class ItemHandler(BaseHandler):
 		r = self.rawQuery('''
 			DELETE FROM item WHERE fk_list = ? AND item.ROWID = ?
 		''', (listID, itemID,), True);
+		self.db.commit()
+
 		response = self.encode({'msg': 'Item deleted.'})
 		self.write(response)
 
@@ -241,6 +251,8 @@ class ItemHandler(BaseHandler):
 			FROM item JOIN barcode ON (item.fk_barcode = barcode.ROWID)
 			WHERE fk_list = ? AND fk_barcode = ?
 		''', (listID, barcodeID,), True);
+		self.db.commit()
+
 		if r2 is not None:
 			self.set_status(500)
 			response = self.encode({'error': 'Item already exists.', 'item': r2})
@@ -250,6 +262,7 @@ class ItemHandler(BaseHandler):
 			INSERT INTO item VALUES(?,?,?,?)
 		''', (listID, barcodeID, j['count'], j['done']))
 		itemID = c.lastrowid
+		self.db.commit()
 
 		response = self.encode({'msg': 'Item created.'})
 		self.set_header("Location", '/list/' + str(listID) + '/item/' + str(itemID))
@@ -271,6 +284,8 @@ class ListHandler(BaseHandler):
 
 	def delete(self, listID):
 		r = self.rawQuery('DELETE FROM list WHERE ROWID = ?', (listID,));
+		self.db.commit()
+
 		response = self.encode({'msg': 'List removed.'})
 		self.write(response)
 

@@ -8,6 +8,11 @@ ufw allow 8888/tcp
 ufw allow ssh
 ufw enable
 
+#
+# To find the raw barcode scanner input device:
+#
+readlink -f $(ls -1 /dev/input/by-id/* | grep Electron_Company)
+
 
 #
 # If you download the GTIN POD database in CSV form:

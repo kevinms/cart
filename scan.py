@@ -1,7 +1,7 @@
 #! /usr/bin/python
-import sys
-import struct
-import time
+import sys, getopt
+import struct, time
+import httplib, json
 
 def addToCart(server, barcode):
 	c = httplib.HTTPConnection(server)
@@ -10,7 +10,7 @@ def addToCart(server, barcode):
 
 	if r.status != 200:
 		print "Lookup failed:", barcode
-		continue
+		return
 
 	resp = r.read()
 	print resp
@@ -37,7 +37,7 @@ def addToCart(server, barcode):
 
 	print r.status, r.reason
 	if r.status == 200:
-		continue
+		return
 
 	#
 	# Update existing item.
@@ -135,7 +135,7 @@ def scanBarcodesRawDevice(server, device):
 	# Close raw device.
 	kb.close()
 
-def scanBarcodeSTDIN(server):
+def scanBarcodesSTDIN(server):
 	while True:
 		string = raw_input("Enter barcode: ").rstrip()
 		print string
