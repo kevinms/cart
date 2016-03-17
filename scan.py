@@ -109,12 +109,12 @@ def scanBarcodesRawDevice(server, device):
 			continue
 
 		# Skip some specific non-character codes.
-		if code in (1,14,15,28,29,42,54,56,100):
+		if code in (1,14,15,29,42,54,56,100):
 			continue
 
 		# Enter.
 		if code == 28 or code == 96:
-			print string
+			print '\nRead string:', string
 			addToCart(server, string)
 			string = ''
 			continue
@@ -122,15 +122,15 @@ def scanBarcodesRawDevice(server, device):
 		table = capscodes if caps else scancodes
 
 		if code not in table:
-			continue
 			print("Event type %u, code %u, value %u at %d.%d" % \
 				(etype, code, value, tv_sec, tv_usec))
+			continue
 
 		key = table[code]
 		string += key
 
-		#sys.stdout.write(key)
-		#sys.stdout.flush()
+		sys.stdout.write(key)
+		sys.stdout.flush()
 
 	# Close raw device.
 	kb.close()
