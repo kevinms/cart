@@ -4,6 +4,7 @@ import tornado.ioloop
 import tornado.web
 import sqlite3
 import json
+import lookup
 
 class Application(tornado.web.Application):
 	def __init__(self):
@@ -161,12 +162,22 @@ class MainHandler(BaseHandler):
 		self.render("cart.html", items=l.items)
 
 class BarcodeHandler(BaseHandler):
-	def get(self, code):
-		#print code
+	def selectBarcode(self, code):
 		r = self.query('''
 			SELECT ROWID as id, code, name
 			FROM barcode WHERE code = ?
 		''', (code,), True);
+		return r
+
+	def get(self, code):
+		#print code
+		r = selectBarcode(code)
+
+		if r is None:
+			name = lookup.getBarcode(code)
+			if name is not None:
+				self.rawQuery("INSERT OR IGNORE INTO barcode VALUES (?,?)", (code, name))
+				r = selectBarcode(code)
 
 		if r is None:
 			self.send_error(500)

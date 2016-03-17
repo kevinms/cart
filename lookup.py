@@ -11,13 +11,15 @@ from lxml import html
 
 def barcodeLookup(code):
 
-	name = upcdatabase(code)
-	if name is not None:
-		return name
+	functions = [
+		upcdatabase,
+		#eansearch,
+	]
 
-	name = eansearch(code)
-	if name is not None:
-		return name
+	for f in functions:
+		name = f(code)
+		if name is not None:
+			return name
 
 	return None
 
