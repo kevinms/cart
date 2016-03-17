@@ -13,6 +13,16 @@ ufw enable
 #
 readlink -f $(ls -1 /dev/input/by-id/* | grep Electron_Company)
 
+sudo python scan.py -d $(readlink -f $(ls -1 /dev/input/by-id/* | grep Electron_Company))
+
+#
+# Enable/disable barcode scanner as a keyboard:
+#
+export DISPLAY=:0
+xinput --list
+xinput --disable 16
+xinput --enable 16
+
 
 #
 # If you download the GTIN POD database in CSV form:
