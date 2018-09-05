@@ -180,7 +180,7 @@ class BarcodeHandler(BaseHandler):
 		r = self.selectBarcode(code)
 
 		if r is None:
-			name = lookup.getBarcode(code)
+			name = lookup.getBarcodeInfo(code)
 			if name is not None:
 				self.rawQuery("INSERT OR IGNORE INTO barcode VALUES (?,?)", (code, name))
 				r = self.selectBarcode(code)

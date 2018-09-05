@@ -9,7 +9,7 @@ from lxml import html
 # 012800517725 AA Batteries
 # 051500240908 Peanut Butter Creamy
 
-def barcodeLookup(code):
+def getBarcodeInfo(code):
 
 	functions = [
 		upcdatabase,
