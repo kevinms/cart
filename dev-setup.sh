@@ -7,7 +7,6 @@ ufw status
 ufw allow 8888/tcp
 ufw allow ssh
 ufw enable
-
 #
 # To find the raw barcode scanner input device:
 #
@@ -38,3 +37,7 @@ xinput --enable 16
 #
 #   cat pod_gtin-sanitized.csv | cut -d';' -f1,2 > pod_gtin-pruned.csv
 #
+
+# Run cart.py to host the server.
+crontab -e
+@reboot ~/dev/cart/cart.py >/dev/null 2>&1
